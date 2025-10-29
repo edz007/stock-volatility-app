@@ -7,18 +7,32 @@ This works around Yahoo Finance authentication issues
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import yfinance as yf
+import pandas as pd
 from datetime import datetime, timedelta
 import logging
 import os
 
 # Disable yfinance caching to avoid SQLite issues on Railway
 os.environ['YF_CACHE_DISABLE'] = '1'
+# Prevent yfinance from trying to use cache
+os.environ['YFINANCE_CACHE_DIR'] = '/tmp'
+os.environ['YFINANCE_NO_CACHE'] = '1'
 
 app = Flask(__name__)
 CORS(app)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Monkey patch to disable cache module if it still tries to load
+try:
+    import sys
+    # Replace cache module with a dummy before yfinance imports it
+    class DummyCache:
+        pass
+    sys.modules['yfinance.cache'] = DummyCache()
+except:
+    pass
 
 
 @app.route('/health', methods=['GET'])
@@ -43,11 +57,34 @@ def get_historical(symbol):
         
         logger.info(f"Fetching {symbol} from {start_date} to {end_date}")
         
-        # Fetch data using yfinance
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(start=start_date, end=end_date, interval='1d')
+        # Fetch data using yfinance - handle SQLite cache errors gracefully
+        # Convert dates to datetime objects
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
         
-        if df.empty:
+        df = None
+        try:
+            # Try with Ticker first (normal method)
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(start=start_dt, end=end_dt, interval='1d')
+        except Exception as ticker_error:
+            if 'SQLite' in str(ticker_error) or 'driver' in str(ticker_error).lower():
+                # SQLite error - use download function as fallback
+                logger.warning(f"Ticker cache error for {symbol}, using download function: {str(ticker_error)}")
+                try:
+                    # Use download function which bypasses some cache
+                    df_download = yf.download(symbol, start=start_dt, end=end_dt, interval='1d', progress=False, show_errors=False)
+                    # Flatten MultiIndex columns if present
+                    if isinstance(df_download.columns, pd.MultiIndex):
+                        df_download.columns = df_download.columns.droplevel(1)
+                    df = df_download
+                except Exception as download_error:
+                    logger.error(f"Download function also failed for {symbol}: {str(download_error)}")
+                    raise ticker_error  # Raise original error
+            else:
+                raise ticker_error
+        
+        if df is None or df.empty:
             return jsonify({'error': f'No data found for {symbol}'}), 404
         
         # Convert to list of dictionaries
@@ -60,7 +97,7 @@ def get_historical(symbol):
                 'low': float(row['Low']),
                 'close': float(row['Close']),
                 'volume': int(row['Volume']),
-                'adjClose': float(row['Close'])  # yfinance already returns adjusted close
+                'adjClose': float(row['Adj Close'] if 'Adj Close' in row else row['Close'])
             })
         
         logger.info(f"✓ Retrieved {len(data)} data points for {symbol}")
@@ -82,8 +119,31 @@ def search_symbols(query):
     try:
         # yfinance doesn't have a direct search, but we can try to get info
         # For now, return a simple match if it's a valid ticker
-        ticker = yf.Ticker(query.upper())
-        info = ticker.info
+        try:
+            ticker = yf.Ticker(query.upper())
+            info = ticker.info
+        except Exception as ticker_error:
+            if 'SQLite' in str(ticker_error) or 'driver' in str(ticker_error).lower():
+                # SQLite error - try download to verify symbol exists
+                logger.warning(f"Ticker cache error for search {query}, using download to verify")
+                try:
+                    test_data = yf.download(query.upper(), period='5d', progress=False, show_errors=False)
+                    if test_data.empty:
+                        return jsonify({'success': True, 'data': []})
+                    # Flatten MultiIndex columns if present
+                    if isinstance(test_data.columns, pd.MultiIndex):
+                        test_data.columns = test_data.columns.droplevel(1)
+                    # Build minimal info from download
+                    info = {
+                        'symbol': query.upper(),
+                        'longName': query.upper(),
+                        'shortName': query.upper(),
+                        'exchange': 'N/A'
+                    }
+                except:
+                    return jsonify({'success': True, 'data': []})
+            else:
+                raise ticker_error
         
         if 'symbol' in info:
             results = [{
@@ -106,8 +166,37 @@ def search_symbols(query):
 def get_quote(symbol):
     """Get current quote for a symbol"""
     try:
-        ticker = yf.Ticker(symbol)
-        info = ticker.info
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+        except Exception as ticker_error:
+            if 'SQLite' in str(ticker_error) or 'driver' in str(ticker_error).lower():
+                # Retry with download to get quote data
+                logger.warning(f"Ticker cache error for quote {symbol}, using alternative method")
+                # Use download to get recent data and extract quote info
+                recent = yf.download(symbol, period='1d', progress=False, show_errors=False)
+                if recent.empty:
+                    raise Exception(f"No data available for {symbol}")
+                # Flatten MultiIndex columns if present
+                if isinstance(recent.columns, pd.MultiIndex):
+                    recent.columns = recent.columns.droplevel(1)
+                # Build minimal quote from download data
+                last_row = recent.iloc[-1]
+                info = {
+                    'symbol': symbol.upper(),
+                    'currentPrice': float(last_row['Close']),
+                    'regularMarketPrice': float(last_row['Close']),
+                    'regularMarketChange': 0,
+                    'regularMarketChangePercent': 0,
+                    'volume': int(last_row['Volume']) if 'Volume' in last_row else 0,
+                    'marketCap': 0,
+                    'fiftyTwoWeekHigh': float(recent['High'].max()),
+                    'fiftyTwoWeekLow': float(recent['Low'].min()),
+                    'longName': symbol.upper(),
+                    'shortName': symbol.upper()
+                }
+            else:
+                raise ticker_error
         
         quote = {
             'symbol': info.get('symbol', symbol.upper()),
