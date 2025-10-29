@@ -31,25 +31,9 @@ class handler(BaseHTTPRequestHandler):
             if not symbol:
                 return self._write_json(400, {"error": "Symbol is required"})
 
-            try:
-                q = yf.Ticker(symbol).info
-                data = {
-                    "symbol": q.get("symbol", symbol.upper()),
-                    "name": q.get("longName", q.get("shortName", symbol)),
-                    "price": q.get("currentPrice", q.get("regularMarketPrice", 0)),
-                    "change": q.get("regularMarketChange", 0),
-                    "changePercent": q.get("regularMarketChangePercent", 0),
-                    "volume": q.get("volume", 0),
-                    "marketCap": q.get("marketCap", 0),
-                    "fiftyTwoWeekHigh": q.get("fiftyTwoWeekHigh", 0),
-                    "fiftyTwoWeekLow": q.get("fiftyTwoWeekLow", 0),
-                }
-                return self._write_json(200, {"success": True, "data": data})
-            except Exception as e:
-                # Fallback to Finnhub if available (handles Yahoo rate limits 429)
-                api_key = os.getenv("FINNHUB_API_KEY")
-                if not api_key:
-                    return self._write_json(500, {"error": str(e)})
+            # 1) Primary: Try Finnhub first if API key is present
+            api_key = os.getenv("FINNHUB_API_KEY")
+            if api_key:
                 try:
                     url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={api_key}"
                     r = requests.get(url, timeout=10)
@@ -68,8 +52,25 @@ class handler(BaseHTTPRequestHandler):
                             "fiftyTwoWeekLow": d.get("l", 0),
                         }
                         return self._write_json(200, {"success": True, "data": data})
-                    return self._write_json(502, {"error": "Finnhub quote unavailable"})
                 except Exception as fe:
-                    return self._write_json(500, {"error": str(fe)})
+                    pass  # Fall through to yfinance fallback
+
+            # 2) Fallback: Try yfinance if Finnhub failed or no API key
+            try:
+                q = yf.Ticker(symbol).info
+                data = {
+                    "symbol": q.get("symbol", symbol.upper()),
+                    "name": q.get("longName", q.get("shortName", symbol)),
+                    "price": q.get("currentPrice", q.get("regularMarketPrice", 0)),
+                    "change": q.get("regularMarketChange", 0),
+                    "changePercent": q.get("regularMarketChangePercent", 0),
+                    "volume": q.get("volume", 0),
+                    "marketCap": q.get("marketCap", 0),
+                    "fiftyTwoWeekHigh": q.get("fiftyTwoWeekHigh", 0),
+                    "fiftyTwoWeekLow": q.get("fiftyTwoWeekLow", 0),
+                }
+                return self._write_json(200, {"success": True, "data": data})
+            except Exception as e:
+                return self._write_json(500, {"error": str(e)})
         except Exception as e:
             return self._write_json(500, {"error": str(e)})

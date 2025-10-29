@@ -1,5 +1,7 @@
 import json
+import os
 import yfinance as yf
+import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
 
@@ -29,16 +31,42 @@ class handler(BaseHTTPRequestHandler):
             if not query:
                 return self._write_json(400, {"error": "Query is required"})
 
-            # yfinance has limited search; attempt to get info for the provided symbol
-            info = yf.Ticker(query.upper()).info
-            if "symbol" in info:
-                results = [{
-                    "symbol": info.get("symbol", query.upper()),
-                    "name": info.get("longName", info.get("shortName", query.upper())),
-                    "exchange": info.get("exchange", "N/A"),
-                    "type": "EQUITY",
-                }]
-                return self._write_json(200, {"success": True, "data": results})
+            # 1) Primary: Try Finnhub first if API key is present
+            api_key = os.getenv("FINNHUB_API_KEY")
+            if api_key:
+                try:
+                    url = f"https://finnhub.io/api/v1/search?q={query}&token={api_key}"
+                    r = requests.get(url, timeout=10)
+                    r.raise_for_status()
+                    d = r.json()
+                    if d and "result" in d:
+                        results = []
+                        for r in d["result"]:
+                            results.append({
+                                "symbol": r.get("symbol", query.upper()),
+                                "name": r.get("description", r.get("symbol", query.upper())),
+                                "exchange": r.get("exchange", "N/A"),
+                                "type": r.get("type", "EQUITY"),
+                            })
+                        return self._write_json(200, {"success": True, "data": results})
+                except Exception:
+                    pass  # Fall through to yfinance fallback
+
+            # 2) Fallback: Try yfinance if Finnhub failed or no API key
+            try:
+                # yfinance has limited search; attempt to get info for the provided symbol
+                info = yf.Ticker(query.upper()).info
+                if "symbol" in info:
+                    results = [{
+                        "symbol": info.get("symbol", query.upper()),
+                        "name": info.get("longName", info.get("shortName", query.upper())),
+                        "exchange": info.get("exchange", "N/A"),
+                        "type": "EQUITY",
+                    }]
+                    return self._write_json(200, {"success": True, "data": results})
+            except Exception:
+                pass
+
             return self._write_json(200, {"success": True, "data": []})
         except Exception:
             return self._write_json(200, {"success": True, "data": []})

@@ -62,11 +62,36 @@ class handler(BaseHTTPRequestHandler):
             if start_date >= end_date:
                 start_date = max(end_date - timedelta(days=7), today - timedelta(days=365))
 
-            # yfinance end is exclusive → make end inclusive by adding one day
-            yf_start = start_date.strftime("%Y-%m-%d")
-            yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
+            # 1) Primary: Try Finnhub first if API key is present
+            api_key = os.getenv("FINNHUB_API_KEY")
+            if api_key:
+                try:
+                    from_ts = int(start_date.timestamp())
+                    to_ts = int(end_date.timestamp())
+                    url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
+                    r = requests.get(url, timeout=20)
+                    r.raise_for_status()
+                    d = r.json()
+                    if d and d.get("s") == "ok" and "t" in d:
+                        data = []
+                        for i, t in enumerate(d["t"]):
+                            data.append({
+                                "date": datetime.fromtimestamp(t).strftime("%Y-%m-%d"),
+                                "open": float(d["o"][i]),
+                                "high": float(d["h"][i]),
+                                "low": float(d["l"][i]),
+                                "close": float(d["c"][i]),
+                                "volume": int(d["v"][i] if i < len(d["v"]) else 0),
+                                "adjClose": float(d["c"][i]),
+                            })
+                        return self._write_json(200, {"success": True, "data": data})
+                except Exception as fe:
+                    pass  # Fall through to yfinance fallback
 
-            # Try yfinance first
+            # 2) Fallback: Try yfinance if Finnhub failed or no API key
+            yf_start = start_date.strftime("%Y-%m-%d")
+            yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")  # yfinance end is exclusive
+            
             tmp_cache = "/tmp/py-yfinance"
             try:
                 os.makedirs(tmp_cache, exist_ok=True)
@@ -93,34 +118,6 @@ class handler(BaseHTTPRequestHandler):
                         })
                     return self._write_json(200, {"success": True, "data": data})
             except Exception as ye:
-                pass  # Fall through to Finnhub fallback
-
-            # Fallback to Finnhub if yfinance failed or returned empty
-            api_key = os.getenv("FINNHUB_API_KEY")
-            if not api_key:
-                return self._write_json(200, {"success": True, "data": []})
-
-            try:
-                from_ts = int(start_date.timestamp())
-                to_ts = int(end_date.timestamp())
-                url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
-                r = requests.get(url, timeout=20)
-                r.raise_for_status()
-                d = r.json()
-                if d and d.get("s") == "ok" and "t" in d:
-                    data = []
-                    for i, t in enumerate(d["t"]):
-                        data.append({
-                            "date": datetime.fromtimestamp(t).strftime("%Y-%m-%d"),
-                            "open": float(d["o"][i]),
-                            "high": float(d["h"][i]),
-                            "low": float(d["l"][i]),
-                            "close": float(d["c"][i]),
-                            "volume": int(d["v"][i] if i < len(d["v"]) else 0),
-                            "adjClose": float(d["c"][i]),
-                        })
-                    return self._write_json(200, {"success": True, "data": data})
-            except Exception as fe:
                 pass
 
             return self._write_json(200, {"success": True, "data": []})
