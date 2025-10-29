@@ -66,6 +66,7 @@ class handler(BaseHTTPRequestHandler):
             api_key = os.getenv("FINNHUB_API_KEY")
             if api_key:
                 try:
+                    print(f"[Historical] Trying Finnhub first for {symbol}")
                     from_ts = int(start_date.timestamp())
                     to_ts = int(end_date.timestamp())
                     url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
@@ -84,9 +85,14 @@ class handler(BaseHTTPRequestHandler):
                                 "volume": int(d["v"][i] if i < len(d["v"]) else 0),
                                 "adjClose": float(d["c"][i]),
                             })
+                        print(f"[Historical] Finnhub successful: {len(data)} data points")
                         return self._write_json(200, {"success": True, "data": data})
+                    else:
+                        print(f"[Historical] Finnhub returned no data (s={d.get('s') if d else 'None'})")
                 except Exception as fe:
-                    pass  # Fall through to yfinance fallback
+                    print(f"[Historical] Finnhub failed: {str(fe)}, falling back to yfinance")
+            else:
+                print(f"[Historical] FINNHUB_API_KEY not set, skipping Finnhub, using yfinance")
 
             # 2) Fallback: Try yfinance if Finnhub failed or no API key
             yf_start = start_date.strftime("%Y-%m-%d")
