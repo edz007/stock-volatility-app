@@ -75,7 +75,9 @@ class handler(BaseHTTPRequestHandler):
                     pass
                 
                 ticker = yf.Ticker(symbol)
-                ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                # Set User-Agent only if session exists
+                if ticker.session is not None:
+                    ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 q = ticker.info
                 data = {
                     "symbol": q.get("symbol", symbol.upper()),

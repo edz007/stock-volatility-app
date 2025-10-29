@@ -73,7 +73,9 @@ class handler(BaseHTTPRequestHandler):
                 
                 # yfinance has limited search; attempt to get info for the provided symbol
                 ticker = yf.Ticker(query.upper())
-                ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                # Set User-Agent only if session exists
+                if ticker.session is not None:
+                    ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 info = ticker.info
                 if "symbol" in info:
                     results = [{

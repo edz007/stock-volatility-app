@@ -130,7 +130,9 @@ class handler(BaseHTTPRequestHandler):
                 
                 # Create ticker - cache warnings will be suppressed since we set cache location
                 ticker = yf.Ticker(symbol)
-                ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                # Set User-Agent only if session exists
+                if ticker.session is not None:
+                    ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 
                 df = ticker.history(start=yf_start, end=yf_end, interval="1d", progress=False)
                 if not df.empty and len(df) > 0:
