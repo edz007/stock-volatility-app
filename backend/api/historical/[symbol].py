@@ -1,6 +1,7 @@
 import json
 import os
 import yfinance as yf
+import requests
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -65,7 +66,7 @@ class handler(BaseHTTPRequestHandler):
             yf_start = start_date.strftime("%Y-%m-%d")
             yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
 
-            # Configure yfinance caches to use writable /tmp (Vercel file system is read-only)
+            # Try yfinance first
             tmp_cache = "/tmp/py-yfinance"
             try:
                 os.makedirs(tmp_cache, exist_ok=True)
@@ -76,23 +77,53 @@ class handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-            df = yf.Ticker(symbol).history(start=yf_start, end=yf_end, interval="1d")
-            if df.empty:
+            try:
+                df = yf.Ticker(symbol).history(start=yf_start, end=yf_end, interval="1d")
+                if not df.empty:
+                    data = []
+                    for idx, row in df.iterrows():
+                        data.append({
+                            "date": idx.strftime("%Y-%m-%d"),
+                            "open": float(row["Open"]),
+                            "high": float(row["High"]),
+                            "low": float(row["Low"]),
+                            "close": float(row["Close"]),
+                            "volume": int(row["Volume"] or 0),
+                            "adjClose": float(row["Close"]),
+                        })
+                    return self._write_json(200, {"success": True, "data": data})
+            except Exception as ye:
+                pass  # Fall through to Finnhub fallback
+
+            # Fallback to Finnhub if yfinance failed or returned empty
+            api_key = os.getenv("FINNHUB_API_KEY")
+            if not api_key:
                 return self._write_json(200, {"success": True, "data": []})
 
-            data = []
-            for idx, row in df.iterrows():
-                data.append({
-                    "date": idx.strftime("%Y-%m-%d"),
-                    "open": float(row["Open"]),
-                    "high": float(row["High"]),
-                    "low": float(row["Low"]),
-                    "close": float(row["Close"]),
-                    "volume": int(row["Volume"] or 0),
-                    "adjClose": float(row["Close"]),
-                })
+            try:
+                from_ts = int(start_date.timestamp())
+                to_ts = int(end_date.timestamp())
+                url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
+                r = requests.get(url, timeout=20)
+                r.raise_for_status()
+                d = r.json()
+                if d and d.get("s") == "ok" and "t" in d:
+                    data = []
+                    for i, t in enumerate(d["t"]):
+                        data.append({
+                            "date": datetime.fromtimestamp(t).strftime("%Y-%m-%d"),
+                            "open": float(d["o"][i]),
+                            "high": float(d["h"][i]),
+                            "low": float(d["l"][i]),
+                            "close": float(d["c"][i]),
+                            "volume": int(d["v"][i] if i < len(d["v"]) else 0),
+                            "adjClose": float(d["c"][i]),
+                        })
+                    return self._write_json(200, {"success": True, "data": data})
+            except Exception as fe:
+                pass
 
-            return self._write_json(200, {"success": True, "data": data})
+            return self._write_json(200, {"success": True, "data": []})
         except Exception as e:
             return self._write_json(500, {"error": str(e)})
 
