@@ -3,6 +3,8 @@ const yf = require('yahoo-finance2').default;
 
 // Optional Python yfinance service URL. If not set, we'll use yahoo-finance2 directly.
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || '';
+// Optional Finnhub token; when present we'll use it as a fallback provider
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
 
 function mapHistorical(data) {
   return (data || []).map(d => ({
@@ -14,6 +16,59 @@ function mapHistorical(data) {
     volume: Number(d.volume || 0),
     adjClose: Number(d.adjClose ?? d.close)
   }));
+}
+
+async function fetchFinnhubDaily(symbol, startDate, endDate) {
+  if (!FINNHUB_API_KEY) throw new Error('FINNHUB_API_KEY not set');
+  const from = Math.floor(new Date(startDate).getTime() / 1000);
+  const to = Math.floor(new Date(endDate).getTime() / 1000);
+  const url = `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`;
+  const { data } = await axios.get(url, { timeout: 20000 });
+  if (!data || (data.s !== 'ok' && data.s !== 'no_data')) {
+    throw new Error(`Finnhub candle error: ${data && data.s}`);
+  }
+  if (data.s === 'no_data') return [];
+  const results = (data.t || []).map((t, i) => ({
+    date: new Date(t * 1000).toISOString().slice(0, 10),
+    open: Number(data.o[i]),
+    high: Number(data.h[i]),
+    low: Number(data.l[i]),
+    close: Number(data.c[i]),
+    volume: Number(data.v[i] || 0),
+    adjClose: Number(data.c[i])
+  }));
+  return results;
+}
+
+async function fetchFinnhubQuote(symbol) {
+  if (!FINNHUB_API_KEY) throw new Error('FINNHUB_API_KEY not set');
+  const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
+  const { data } = await axios.get(url, { timeout: 10000 });
+  if (!data || typeof data.c === 'undefined') throw new Error('Finnhub quote error');
+  return {
+    symbol: symbol.toUpperCase(),
+    name: symbol.toUpperCase(),
+    price: data.c,
+    change: data.d,
+    changePercent: data.dp,
+    volume: data.v,
+    marketCap: undefined,
+    fiftyTwoWeekHigh: data.h,
+    fiftyTwoWeekLow: data.l
+  };
+}
+
+async function fetchFinnhubSearch(query) {
+  if (!FINNHUB_API_KEY) throw new Error('FINNHUB_API_KEY not set');
+  const url = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${FINNHUB_API_KEY}`;
+  const { data } = await axios.get(url, { timeout: 10000 });
+  const results = (data.result || []).map(r => ({
+    symbol: r.symbol,
+    name: r.description || r.symbol,
+    exchange: r.exchange || 'N/A',
+    type: r.type || 'EQUITY'
+  }));
+  return results;
 }
 
 /**
@@ -49,11 +104,19 @@ async function getHistoricalData(symbol, startDate, endDate) {
     const results = await yf.historical(symbol, { period1: start, period2: end, interval: '1d' });
     const mapped = mapHistorical(results);
     console.log(`✓ Received ${mapped.length} data points for ${symbol} (yf2)`);
-    return mapped;
+    if (mapped.length > 0) return mapped;
   } catch (e) {
-    console.error('yf.historical failed:', e && e.message ? e.message : e);
-    throw new Error(`yf2 historical failed for ${symbol}: ${e && e.message ? e.message : String(e)}`);
+    console.warn('yf.historical failed:', e && e.message ? e.message : e);
   }
+
+  // 3) Fallback to Finnhub if API key is present
+  if (FINNHUB_API_KEY) {
+    console.log(`Falling back to Finnhub for ${symbol}`);
+    const finnhubData = await fetchFinnhubDaily(symbol, start, end);
+    if (finnhubData.length > 0) return finnhubData;
+  }
+
+  throw new Error(`No historical data available for ${symbol}`);
 }
 
 /**
@@ -71,13 +134,26 @@ async function searchSymbols(query) {
     }
   }
 
-  const res = await yf.search(query);
-  return (res.quotes || []).map(q => ({
-    symbol: q.symbol,
-    name: q.shortname || q.longname || q.symbol,
-    exchange: q.exchange || 'N/A',
-    type: q.quoteType || 'EQUITY'
-  }));
+  try {
+    const res = await yf.search(query);
+    const yfResults = (res.quotes || []).map(q => ({
+      symbol: q.symbol,
+      name: q.shortname || q.longname || q.symbol,
+      exchange: q.exchange || 'N/A',
+      type: q.quoteType || 'EQUITY'
+    }));
+    if (yfResults.length > 0) return yfResults;
+  } catch (e) {
+    console.warn('yf.search failed, will try Finnhub');
+  }
+
+  if (FINNHUB_API_KEY) {
+    try {
+      return await fetchFinnhubSearch(query);
+    } catch (_) {}
+  }
+
+  return [];
 }
 
 /**
@@ -95,18 +171,28 @@ async function getQuote(symbol) {
     }
   }
 
-  const q = await yf.quote(symbol);
-  return {
-    symbol: q.symbol,
-    name: q.shortName || q.longName || q.symbol,
-    price: q.regularMarketPrice,
-    change: q.regularMarketChange,
-    changePercent: q.regularMarketChangePercent,
-    volume: q.regularMarketVolume,
-    marketCap: q.marketCap,
-    fiftyTwoWeekHigh: q.fiftyTwoWeekHigh,
-    fiftyTwoWeekLow: q.fiftyTwoWeekLow
-  };
+  try {
+    const q = await yf.quote(symbol);
+    return {
+      symbol: q.symbol,
+      name: q.shortName || q.longName || q.symbol,
+      price: q.regularMarketPrice,
+      change: q.regularMarketChange,
+      changePercent: q.regularMarketChangePercent,
+      volume: q.regularMarketVolume,
+      marketCap: q.marketCap,
+      fiftyTwoWeekHigh: q.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: q.fiftyTwoWeekLow
+    };
+  } catch (e) {
+    console.warn('yf.quote failed');
+  }
+
+  if (FINNHUB_API_KEY) {
+    return await fetchFinnhubQuote(symbol);
+  }
+
+  throw new Error(`No quote available for ${symbol}`);
 }
 
 module.exports = {
