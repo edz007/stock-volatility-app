@@ -67,46 +67,8 @@ class handler(BaseHTTPRequestHandler):
             if start_date >= end_date:
                 start_date = max(end_date - timedelta(days=7), today - timedelta(days=365))
 
-            # 1) Primary: Try Finnhub first if API key is present
-            api_key = os.getenv("FINNHUB_API_KEY")
-            if api_key:
-                try:
-                    print(f"[Historical] Trying Finnhub first for {symbol}")
-                    # Convert date objects to datetime for timestamp()
-                    start_dt = datetime.combine(start_date, datetime.min.time())
-                    end_dt = datetime.combine(end_date, datetime.min.time())
-                    from_ts = int(start_dt.timestamp())
-                    to_ts = int(end_dt.timestamp())
-                    url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
-                    r = requests.get(url, timeout=20)
-                    if r.status_code == 403:
-                        print(f"[Historical] Finnhub 403 Forbidden - check API key validity and free tier limits")
-                        raise Exception(f"Finnhub 403: Invalid API key or rate limit (token length: {len(api_key)})")
-                    r.raise_for_status()
-                    d = r.json()
-                    if d and d.get("s") == "ok" and "t" in d:
-                        data = []
-                        for i, t in enumerate(d["t"]):
-                            data.append({
-                                "date": datetime.fromtimestamp(t).strftime("%Y-%m-%d"),
-                                "open": float(d["o"][i]),
-                                "high": float(d["h"][i]),
-                                "low": float(d["l"][i]),
-                                "close": float(d["c"][i]),
-                                "volume": int(d["v"][i] if i < len(d["v"]) else 0),
-                                "adjClose": float(d["c"][i]),
-                            })
-                        print(f"[Historical] Finnhub successful: {len(data)} data points")
-                        return self._write_json(200, {"success": True, "data": data})
-                    else:
-                        print(f"[Historical] Finnhub returned no data (s={d.get('s') if d else 'None'})")
-                except Exception as fe:
-                    print(f"[Historical] Finnhub failed: {str(fe)}, falling back to yfinance")
-            else:
-                print(f"[Historical] FINNHUB_API_KEY not set, skipping Finnhub, using yfinance")
-
-            # 2) Fallback: Try yfinance if Finnhub failed or no API key
-            print(f"[Historical] Trying yfinance as fallback for {symbol}")
+            # 1) Primary: Try yfinance first
+            print(f"[Historical] Trying yfinance first for {symbol}")
             yf_start = start_date.strftime("%Y-%m-%d")
             yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")  # yfinance end is exclusive
             
@@ -134,7 +96,7 @@ class handler(BaseHTTPRequestHandler):
                 if ticker.session is not None:
                     ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 
-                df = ticker.history(start=yf_start, end=yf_end, interval="1d", progress=False)
+                df = ticker.history(start=yf_start, end=yf_end, interval="1d")
                 if not df.empty and len(df) > 0:
                     print(f"[Historical] yfinance successful: {len(df)} data points")
                     data = []
@@ -152,8 +114,41 @@ class handler(BaseHTTPRequestHandler):
                 else:
                     print(f"[Historical] yfinance returned empty DataFrame")
             except Exception as ye:
-                print(f"[Historical] yfinance failed: {str(ye)}")
-                # yfinance errors are now handled - return empty data gracefully
+                print(f"[Historical] yfinance failed: {str(ye)}, falling back to Finnhub")
+                
+                # Fallback: Try Finnhub if yfinance failed
+                api_key = os.getenv("FINNHUB_API_KEY")
+                if api_key:
+                    try:
+                        print(f"[Historical] Trying Finnhub as fallback for {symbol}")
+                        # Convert date objects to datetime for timestamp()
+                        start_dt = datetime.combine(start_date, datetime.min.time())
+                        end_dt = datetime.combine(end_date, datetime.min.time())
+                        from_ts = int(start_dt.timestamp())
+                        to_ts = int(end_dt.timestamp())
+                        url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
+                        r = requests.get(url, timeout=20)
+                        if r.status_code == 403:
+                            print(f"[Historical] Finnhub 403 Forbidden - check API key validity and free tier limits")
+                        else:
+                            r.raise_for_status()
+                            d = r.json()
+                            if d and d.get("s") == "ok" and "t" in d:
+                                data = []
+                                for i, t in enumerate(d["t"]):
+                                    data.append({
+                                        "date": datetime.fromtimestamp(t).strftime("%Y-%m-%d"),
+                                        "open": float(d["o"][i]),
+                                        "high": float(d["h"][i]),
+                                        "low": float(d["l"][i]),
+                                        "close": float(d["c"][i]),
+                                        "volume": int(d["v"][i] if i < len(d["v"]) else 0),
+                                        "adjClose": float(d["c"][i]),
+                                    })
+                                print(f"[Historical] Finnhub successful: {len(data)} data points")
+                                return self._write_json(200, {"success": True, "data": data})
+                    except Exception as fe:
+                        print(f"[Historical] Finnhub also failed: {str(fe)}")
 
             return self._write_json(200, {"success": True, "data": []})
         except Exception as e:

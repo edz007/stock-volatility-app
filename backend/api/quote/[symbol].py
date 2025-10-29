@@ -36,31 +36,7 @@ class handler(BaseHTTPRequestHandler):
             if not symbol:
                 return self._write_json(400, {"error": "Symbol is required"})
 
-            # 1) Primary: Try Finnhub first if API key is present
-            api_key = os.getenv("FINNHUB_API_KEY")
-            if api_key:
-                try:
-                    url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={api_key}"
-                    r = requests.get(url, timeout=10)
-                    r.raise_for_status()
-                    d = r.json()
-                    if d and "c" in d:
-                        data = {
-                            "symbol": symbol.upper(),
-                            "name": symbol.upper(),
-                            "price": d.get("c", 0),
-                            "change": d.get("d", 0),
-                            "changePercent": d.get("dp", 0),
-                            "volume": d.get("v", 0),
-                            "marketCap": None,
-                            "fiftyTwoWeekHigh": d.get("h", 0),
-                            "fiftyTwoWeekLow": d.get("l", 0),
-                        }
-                        return self._write_json(200, {"success": True, "data": data})
-                except Exception as fe:
-                    pass  # Fall through to yfinance fallback
-
-            # 2) Fallback: Try yfinance if Finnhub failed or no API key
+            # 1) Primary: Try yfinance first
             try:
                 # Configure cache location to suppress warnings
                 tmp_cache = "/tmp/py-yfinance"
@@ -92,6 +68,29 @@ class handler(BaseHTTPRequestHandler):
                 }
                 return self._write_json(200, {"success": True, "data": data})
             except Exception as e:
+                # Fallback: Try Finnhub if yfinance failed
+                api_key = os.getenv("FINNHUB_API_KEY")
+                if api_key:
+                    try:
+                        url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={api_key}"
+                        r = requests.get(url, timeout=10)
+                        r.raise_for_status()
+                        d = r.json()
+                        if d and "c" in d:
+                            data = {
+                                "symbol": symbol.upper(),
+                                "name": symbol.upper(),
+                                "price": d.get("c", 0),
+                                "change": d.get("d", 0),
+                                "changePercent": d.get("dp", 0),
+                                "volume": d.get("v", 0),
+                                "marketCap": None,
+                                "fiftyTwoWeekHigh": d.get("h", 0),
+                                "fiftyTwoWeekLow": d.get("l", 0),
+                            }
+                            return self._write_json(200, {"success": True, "data": data})
+                    except Exception:
+                        pass
                 return self._write_json(500, {"error": str(e)})
         except Exception as e:
             return self._write_json(500, {"error": str(e)})

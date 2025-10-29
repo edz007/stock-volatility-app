@@ -1,7 +1,7 @@
 const axios = require('axios');
 const yf = require('yahoo-finance2').default;
 
-// Priority order: Finnhub (if API key present) → Python yfinance service → yahoo-finance2
+// Priority order: yahoo-finance2 → Python yfinance service → Finnhub (if API key present)
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || '';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
 
@@ -81,18 +81,15 @@ async function getHistoricalData(symbol, startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  // 1) Primary: Try Finnhub first if API key is present
-  if (FINNHUB_API_KEY) {
-    try {
-      console.log(`Fetching data for ${symbol} via Finnhub`);
-      const finnhubData = await fetchFinnhubDaily(symbol, start, end);
-      if (finnhubData.length > 0) {
-        console.log(`✓ Received ${finnhubData.length} data points for ${symbol} (Finnhub)`);
-        return finnhubData;
-      }
-    } catch (e) {
-      console.warn('Finnhub failed, falling back:', e && e.message ? e.message : e);
-    }
+  // 1) Primary: Try yahoo-finance2 first
+  console.log(`Fetching data for ${symbol} via yahoo-finance2`);
+  try {
+    const results = await yf.historical(symbol, { period1: start, period2: end, interval: '1d' });
+    const mapped = mapHistorical(results);
+    console.log(`✓ Received ${mapped.length} data points for ${symbol} (yf2)`);
+    if (mapped.length > 0) return mapped;
+  } catch (e) {
+    console.warn('yf.historical failed:', e && e.message ? e.message : e);
   }
 
   // 2) Fallback: Try Python service if configured
@@ -107,19 +104,22 @@ async function getHistoricalData(symbol, startDate, endDate) {
         return response.data.data;
       }
     } catch (error) {
-      console.warn('Python service unavailable, falling back to yahoo-finance2:', error.message);
+      console.warn('Python service unavailable, falling back to Finnhub:', error.message);
     }
   }
 
-  // 3) Final fallback: yahoo-finance2
-  console.log(`Fetching data for ${symbol} via yahoo-finance2`);
-  try {
-    const results = await yf.historical(symbol, { period1: start, period2: end, interval: '1d' });
-    const mapped = mapHistorical(results);
-    console.log(`✓ Received ${mapped.length} data points for ${symbol} (yf2)`);
-    if (mapped.length > 0) return mapped;
-  } catch (e) {
-    console.warn('yf.historical failed:', e && e.message ? e.message : e);
+  // 3) Final fallback: Try Finnhub if API key is present
+  if (FINNHUB_API_KEY) {
+    try {
+      console.log(`Fetching data for ${symbol} via Finnhub`);
+      const finnhubData = await fetchFinnhubDaily(symbol, start, end);
+      if (finnhubData.length > 0) {
+        console.log(`✓ Received ${finnhubData.length} data points for ${symbol} (Finnhub)`);
+        return finnhubData;
+      }
+    } catch (e) {
+      console.warn('Finnhub failed:', e && e.message ? e.message : e);
+    }
   }
 
   throw new Error(`No historical data available for ${symbol}`);
@@ -131,26 +131,7 @@ async function getHistoricalData(symbol, startDate, endDate) {
  * @returns {Promise<Array>} Array of matching stock symbols and names
  */
 async function searchSymbols(query) {
-  // 1) Primary: Try Finnhub first if API key is present
-  if (FINNHUB_API_KEY) {
-    try {
-      return await fetchFinnhubSearch(query);
-    } catch (e) {
-      console.warn('Finnhub search failed, falling back:', e && e.message ? e.message : e);
-    }
-  }
-
-  // 2) Fallback: Try Python service if configured
-  if (PYTHON_SERVICE_URL) {
-    try {
-      const response = await axios.get(`${PYTHON_SERVICE_URL}/search/${query}`, { timeout: 10000 });
-      if (response.data && response.data.success) return response.data.data || [];
-    } catch (error) {
-      console.warn('Python search failed, falling back to yahoo-finance2');
-    }
-  }
-
-  // 3) Final fallback: yahoo-finance2
+  // 1) Primary: Try yahoo-finance2 first
   try {
     const res = await yf.search(query);
     const yfResults = (res.quotes || []).map(q => ({
@@ -161,7 +142,26 @@ async function searchSymbols(query) {
     }));
     if (yfResults.length > 0) return yfResults;
   } catch (e) {
-    console.warn('yf.search failed');
+    console.warn('yf.search failed, falling back');
+  }
+
+  // 2) Fallback: Try Python service if configured
+  if (PYTHON_SERVICE_URL) {
+    try {
+      const response = await axios.get(`${PYTHON_SERVICE_URL}/search/${query}`, { timeout: 10000 });
+      if (response.data && response.data.success) return response.data.data || [];
+    } catch (error) {
+      console.warn('Python search failed, falling back to Finnhub');
+    }
+  }
+
+  // 3) Final fallback: Try Finnhub if API key is present
+  if (FINNHUB_API_KEY) {
+    try {
+      return await fetchFinnhubSearch(query);
+    } catch (e) {
+      console.warn('Finnhub search failed');
+    }
   }
 
   return [];
@@ -173,26 +173,7 @@ async function searchSymbols(query) {
  * @returns {Promise<Object>} Current quote data
  */
 async function getQuote(symbol) {
-  // 1) Primary: Try Finnhub first if API key is present
-  if (FINNHUB_API_KEY) {
-    try {
-      return await fetchFinnhubQuote(symbol);
-    } catch (e) {
-      console.warn('Finnhub quote failed, falling back:', e && e.message ? e.message : e);
-    }
-  }
-
-  // 2) Fallback: Try Python service if configured
-  if (PYTHON_SERVICE_URL) {
-    try {
-      const response = await axios.get(`${PYTHON_SERVICE_URL}/quote/${symbol}`, { timeout: 10000 });
-      if (response.data && response.data.success) return response.data.data;
-    } catch (error) {
-      console.warn('Python quote failed, falling back to yahoo-finance2');
-    }
-  }
-
-  // 3) Final fallback: yahoo-finance2
+  // 1) Primary: Try yahoo-finance2 first
   try {
     const q = await yf.quote(symbol);
     return {
@@ -207,7 +188,26 @@ async function getQuote(symbol) {
       fiftyTwoWeekLow: q.fiftyTwoWeekLow
     };
   } catch (e) {
-    console.warn('yf.quote failed');
+    console.warn('yf.quote failed, falling back');
+  }
+
+  // 2) Fallback: Try Python service if configured
+  if (PYTHON_SERVICE_URL) {
+    try {
+      const response = await axios.get(`${PYTHON_SERVICE_URL}/quote/${symbol}`, { timeout: 10000 });
+      if (response.data && response.data.success) return response.data.data;
+    } catch (error) {
+      console.warn('Python quote failed, falling back to Finnhub');
+    }
+  }
+
+  // 3) Final fallback: Try Finnhub if API key is present
+  if (FINNHUB_API_KEY) {
+    try {
+      return await fetchFinnhubQuote(symbol);
+    } catch (e) {
+      console.warn('Finnhub quote failed');
+    }
   }
 
   throw new Error(`No quote available for ${symbol}`);

@@ -36,28 +36,7 @@ class handler(BaseHTTPRequestHandler):
             if not query:
                 return self._write_json(400, {"error": "Query is required"})
 
-            # 1) Primary: Try Finnhub first if API key is present
-            api_key = os.getenv("FINNHUB_API_KEY")
-            if api_key:
-                try:
-                    url = f"https://finnhub.io/api/v1/search?q={query}&token={api_key}"
-                    r = requests.get(url, timeout=10)
-                    r.raise_for_status()
-                    d = r.json()
-                    if d and "result" in d:
-                        results = []
-                        for r in d["result"]:
-                            results.append({
-                                "symbol": r.get("symbol", query.upper()),
-                                "name": r.get("description", r.get("symbol", query.upper())),
-                                "exchange": r.get("exchange", "N/A"),
-                                "type": r.get("type", "EQUITY"),
-                            })
-                        return self._write_json(200, {"success": True, "data": results})
-                except Exception:
-                    pass  # Fall through to yfinance fallback
-
-            # 2) Fallback: Try yfinance if Finnhub failed or no API key
+            # 1) Primary: Try yfinance first
             try:
                 # Configure cache location to suppress warnings
                 tmp_cache = "/tmp/py-yfinance"
@@ -86,7 +65,26 @@ class handler(BaseHTTPRequestHandler):
                     }]
                     return self._write_json(200, {"success": True, "data": results})
             except Exception:
-                pass
+                # Fallback: Try Finnhub if yfinance failed
+                api_key = os.getenv("FINNHUB_API_KEY")
+                if api_key:
+                    try:
+                        url = f"https://finnhub.io/api/v1/search?q={query}&token={api_key}"
+                        r = requests.get(url, timeout=10)
+                        r.raise_for_status()
+                        d = r.json()
+                        if d and "result" in d:
+                            results = []
+                            for r_item in d["result"]:
+                                results.append({
+                                    "symbol": r_item.get("symbol", query.upper()),
+                                    "name": r_item.get("description", r_item.get("symbol", query.upper())),
+                                    "exchange": r_item.get("exchange", "N/A"),
+                                    "type": r_item.get("type", "EQUITY"),
+                                })
+                            return self._write_json(200, {"success": True, "data": results})
+                    except Exception:
+                        pass
 
             return self._write_json(200, {"success": True, "data": []})
         except Exception:
