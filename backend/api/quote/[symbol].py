@@ -71,5 +71,5 @@ class handler(BaseHTTPRequestHandler):
                     return self._write_json(502, {"error": "Finnhub quote unavailable"})
                 except Exception as fe:
                     return self._write_json(500, {"error": str(fe)})
-
-
+        except Exception as e:
+            return self._write_json(500, {"error": str(e)})
