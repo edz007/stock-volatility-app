@@ -1,0 +1,217 @@
+.metrics-display {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.metrics-header h3 {
+  font-size: 1.5rem;
+  color: #1f2937;
+}
+
+.method-badge {
+  padding: 0.5rem 1rem;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  background: #f9fafb;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metric-card.highlight {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-color: #93c5fd;
+}
+
+.metric-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.metric-value.large {
+  font-size: 2rem;
+  color: #2563eb;
+}
+
+.metric-value.small {
+  font-size: 1.2rem;
+}
+
+.metric-sublabel {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.garch-parameters {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.garch-parameters h4 {
+  font-size: 1.1rem;
+  color: #92400e;
+  margin-bottom: 0.75rem;
+}
+
+.parameters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.parameter-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #fffbeb;
+  border-radius: 6px;
+}
+
+.param-label {
+  font-weight: 500;
+  color: #78350f;
+  font-size: 0.9rem;
+}
+
+.param-value {
+  font-weight: 600;
+  color: #92400e;
+  font-family: monospace;
+}
+
+.garch-diagnostics {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+.garch-diagnostics h4 {
+  font-size: 1.1rem;
+  color: #14532d;
+  margin-bottom: 1rem;
+}
+
+.diagnostics-table {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.diagnostics-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: white;
+}
+
+.diagnostics-table th {
+  background: #1e293b;
+  color: white;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.diagnostics-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.diagnostics-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.model-fit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.fit-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #d1fae5;
+  font-size: 0.9rem;
+}
+
+.fit-metric span {
+  color: #065f46;
+  font-weight: 500;
+}
+
+.fit-metric strong {
+  color: #047857;
+  font-size: 1.1rem;
+}
+
+.data-info {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .parameters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,280 @@
+.models-guide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #ffffff;
+}
+
+.guide-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.guide-header h1 {
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.guide-header p {
+  font-size: 1.2rem;
+  color: #64748b;
+  margin-bottom: 1.5rem;
+}
+
+.back-button {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
+  color: white;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.back-button:hover {
+  background: #2563eb;
+}
+
+.model-section {
+  margin-bottom: 4rem;
+  padding: 2rem;
+  background: #f8fafc;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.model-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.model-header h2 {
+  font-size: 2rem;
+  color: #1e293b;
+  margin: 0;
+}
+
+.model-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.model-badge {
+  background: #3b82f6;
+  color: white;
+}
+
+.badge-yellow {
+  background: #f59e0b;
+}
+
+.badge-green {
+  background: #10b981;
+}
+
+.formula-box {
+  background: #1e293b;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.formula-box h3 {
+  color: white;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formula {
+  display: block;
+  font-size: 1.5rem;
+  color: #60a5fa;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.formula-note {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.model-explanation {
+  line-height: 1.8;
+}
+
+.model-explanation h3 {
+  color: #1e293b;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  margin-top: 2rem;
+}
+
+.model-explanation p {
+  color: #475569;
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+}
+
+.key-features,
+.when-to-use {
+  margin: 2rem 0;
+}
+
+.key-features h4,
+.when-to-use h4 {
+  color: #1e293b;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.key-features ul,
+.when-to-use ul {
+  list-style: none;
+  padding: 0;
+}
+
+.key-features li,
+.when-to-use li {
+  padding: 0.75rem 0;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.key-features li:last-child,
+.when-to-use li:last-child {
+  border-bottom: none;
+}
+
+.infographic {
+  margin: 2rem 0;
+  padding: 1rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.comparison-section {
+  margin: 4rem 0;
+  padding: 2rem;
+  background: #f8fafc;
+  border-radius: 1rem;
+}
+
+.comparison-section h2 {
+  text-align: center;
+  color: #1e293b;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+}
+
+.comparison-table {
+  overflow-x: auto;
+}
+
+.comparison-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.comparison-table th {
+  background: #1e293b;
+  color: white;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.comparison-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.comparison-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.try-it-section {
+  text-align: center;
+  padding: 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 1rem;
+  color: white;
+  margin: 3rem 0;
+}
+
+.try-it-section h2 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.try-it-section p {
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  opacity: 0.9;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 1rem 2rem;
+  background: white;
+  color: #667eea;
+  text-decoration: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .models-guide {
+    padding: 1rem;
+  }
+
+  .guide-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .model-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .model-section {
+    padding: 1rem;
+  }
+
+  .formula {
+    font-size: 1.2rem;
+  }
+
+  .comparison-table {
+    font-size: 0.875rem;
+  }
+}
+

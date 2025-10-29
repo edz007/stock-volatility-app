@@ -1,0 +1,63 @@
+.prob-brackets {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.prob-brackets h4 {
+  margin: 0 0 0.75rem 0;
+  color: #1e293b;
+}
+
+.prob-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prob-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.6fr 2fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.prob-header {
+  font-weight: 600;
+  color: #334155;
+}
+
+.prob-footer {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.5rem;
+  color: #334155;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.bar-col {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background: #6366f1;
+}
+
+.bar.green { background: #10b981; }
+.bar.orange { background: #f59e0b; }
+.bar.red { background: #ef4444; }
+
+@media (max-width: 768px) {
+  .prob-row { grid-template-columns: 1fr 0.7fr 1.5fr; }
+}
+
+
