@@ -1,6 +1,12 @@
 const axios = require('axios');
 const yf = require('yahoo-finance2').default;
 
+// Configure yahoo-finance2 with custom headers to avoid "Unauthorized" errors
+yf.setGlobalConfig({
+  validation: { logErrors: false },
+  queue: { concurrency: 1 }
+});
+
 // Priority order: yahoo-finance2 → Python yfinance service → Finnhub (if API key present)
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || '';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';

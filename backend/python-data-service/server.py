@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 import logging
 import os
 
+# Disable yfinance caching to avoid SQLite issues on Railway
+os.environ['YF_CACHE_DISABLE'] = '1'
+
 app = Flask(__name__)
 CORS(app)
 
