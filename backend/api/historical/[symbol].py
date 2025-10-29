@@ -36,14 +36,37 @@ class handler(BaseHTTPRequestHandler):
             start = (qs.get("start", [None])[0])
             end = (qs.get("end", [None])[0])
 
+            # Defaults
+            today = datetime.utcnow().date()
             if not end:
-                end = datetime.utcnow().strftime("%Y-%m-%d")
-            if not start:
-                start = (datetime.utcnow() - timedelta(days=180)).strftime("%Y-%m-%d")
+                end_date = today
+            else:
+                try:
+                    end_date = datetime.strptime(end, "%Y-%m-%d").date()
+                except Exception:
+                    return self._write_json(400, {"error": "Invalid end date format. Use YYYY-MM-DD"})
 
-            df = yf.Ticker(symbol).history(start=start, end=end, interval="1d")
+            if not start:
+                start_date = today - timedelta(days=180)
+            else:
+                try:
+                    start_date = datetime.strptime(start, "%Y-%m-%d").date()
+                except Exception:
+                    return self._write_json(400, {"error": "Invalid start date format. Use YYYY-MM-DD"})
+
+            # Clamp future end dates and ensure start < end
+            if end_date > today:
+                end_date = today
+            if start_date >= end_date:
+                start_date = max(end_date - timedelta(days=7), today - timedelta(days=365))
+
+            # yfinance end is exclusive → make end inclusive by adding one day
+            yf_start = start_date.strftime("%Y-%m-%d")
+            yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+            df = yf.Ticker(symbol).history(start=yf_start, end=yf_end, interval="1d")
             if df.empty:
-                return self._write_json(404, {"error": f"No data for {symbol}"})
+                return self._write_json(200, {"success": True, "data": []})
 
             data = []
             for idx, row in df.iterrows():
