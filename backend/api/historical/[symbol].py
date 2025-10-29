@@ -1,4 +1,5 @@
 import json
+import os
 import yfinance as yf
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
@@ -63,6 +64,17 @@ class handler(BaseHTTPRequestHandler):
             # yfinance end is exclusive → make end inclusive by adding one day
             yf_start = start_date.strftime("%Y-%m-%d")
             yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+            # Configure yfinance caches to use writable /tmp (Vercel file system is read-only)
+            tmp_cache = "/tmp/py-yfinance"
+            try:
+                os.makedirs(tmp_cache, exist_ok=True)
+                if hasattr(yf, "set_tz_cache_location"):
+                    yf.set_tz_cache_location(tmp_cache)
+                if hasattr(yf, "set_cookie_cache_location"):
+                    yf.set_cookie_cache_location(tmp_cache)
+            except Exception:
+                pass
 
             df = yf.Ticker(symbol).history(start=yf_start, end=yf_end, interval="1d")
             if df.empty:
