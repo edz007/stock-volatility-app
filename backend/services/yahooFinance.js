@@ -45,10 +45,15 @@ async function getHistoricalData(symbol, startDate, endDate) {
 
   // 2) Fallback to yahoo-finance2
   console.log(`Fetching data for ${symbol} via yahoo-finance2`);
-  const results = await yf.historical(symbol, { period1: start, period2: end, interval: '1d' });
-  const mapped = mapHistorical(results);
-  console.log(`✓ Received ${mapped.length} data points for ${symbol} (yf2)`);
-  return mapped;
+  try {
+    const results = await yf.historical(symbol, { period1: start, period2: end, interval: '1d' });
+    const mapped = mapHistorical(results);
+    console.log(`✓ Received ${mapped.length} data points for ${symbol} (yf2)`);
+    return mapped;
+  } catch (e) {
+    console.error('yf.historical failed:', e && e.message ? e.message : e);
+    throw new Error(`yf2 historical failed for ${symbol}: ${e && e.message ? e.message : String(e)}`);
+  }
 }
 
 /**

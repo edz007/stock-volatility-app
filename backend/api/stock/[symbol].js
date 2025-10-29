@@ -53,7 +53,8 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in /api/stock/[symbol]", error);
-    res.status(500).json({ error: "Failed to fetch stock data", message: error.message });
+    const message = (error && error.message) ? error.message : String(error);
+    res.status(500).json({ error: "Failed to fetch stock data", message });
   }
 };
 
