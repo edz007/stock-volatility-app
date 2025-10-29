@@ -1,9 +1,14 @@
 import json
 import os
+import logging
 import yfinance as yf
 import requests
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse
+
+# Suppress yfinance cache warnings
+yf_logger = logging.getLogger('yfinance')
+yf_logger.setLevel(logging.WARNING)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -57,7 +62,21 @@ class handler(BaseHTTPRequestHandler):
 
             # 2) Fallback: Try yfinance if Finnhub failed or no API key
             try:
-                q = yf.Ticker(symbol).info
+                # Configure cache location to suppress warnings
+                tmp_cache = "/tmp/py-yfinance"
+                try:
+                    os.makedirs(tmp_cache, exist_ok=True)
+                    os.environ["YFINANCE_CACHE_DIR"] = tmp_cache
+                    if hasattr(yf, "set_tz_cache_location"):
+                        yf.set_tz_cache_location(tmp_cache)
+                    if hasattr(yf, "set_cookie_cache_location"):
+                        yf.set_cookie_cache_location(tmp_cache)
+                except Exception:
+                    pass
+                
+                ticker = yf.Ticker(symbol)
+                ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                q = ticker.info
                 data = {
                     "symbol": q.get("symbol", symbol.upper()),
                     "name": q.get("longName", q.get("shortName", symbol)),

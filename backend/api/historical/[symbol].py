@@ -1,10 +1,15 @@
 import json
 import os
+import logging
 import yfinance as yf
 import requests
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+
+# Suppress yfinance cache warnings
+yf_logger = logging.getLogger('yfinance')
+yf_logger.setLevel(logging.WARNING)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -74,6 +79,9 @@ class handler(BaseHTTPRequestHandler):
                     to_ts = int(end_dt.timestamp())
                     url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
                     r = requests.get(url, timeout=20)
+                    if r.status_code == 403:
+                        print(f"[Historical] Finnhub 403 Forbidden - check API key validity and free tier limits")
+                        raise Exception(f"Finnhub 403: Invalid API key or rate limit (token length: {len(api_key)})")
                     r.raise_for_status()
                     d = r.json()
                     if d and d.get("s") == "ok" and "t" in d:
@@ -98,22 +106,35 @@ class handler(BaseHTTPRequestHandler):
                 print(f"[Historical] FINNHUB_API_KEY not set, skipping Finnhub, using yfinance")
 
             # 2) Fallback: Try yfinance if Finnhub failed or no API key
+            print(f"[Historical] Trying yfinance as fallback for {symbol}")
             yf_start = start_date.strftime("%Y-%m-%d")
             yf_end = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")  # yfinance end is exclusive
             
+            # Configure yfinance cache to use writable /tmp location
             tmp_cache = "/tmp/py-yfinance"
             try:
                 os.makedirs(tmp_cache, exist_ok=True)
+                # Set cache locations before creating Ticker to avoid read-only filesystem errors
                 if hasattr(yf, "set_tz_cache_location"):
                     yf.set_tz_cache_location(tmp_cache)
                 if hasattr(yf, "set_cookie_cache_location"):
                     yf.set_cookie_cache_location(tmp_cache)
-            except Exception:
-                pass
+                print(f"[Historical] yfinance cache configured to {tmp_cache}")
+            except Exception as cache_err:
+                print(f"[Historical] Warning: Could not configure yfinance cache: {cache_err}")
 
             try:
-                df = yf.Ticker(symbol).history(start=yf_start, end=yf_end, interval="1d")
-                if not df.empty:
+                # Disable yfinance cache by setting env vars (works before Ticker creation)
+                os.environ["YFINANCE_CACHE_DIR"] = tmp_cache
+                os.environ["YFINANCE_NO_CACHE"] = "1"
+                
+                # Create ticker - cache warnings will be suppressed since we set cache location
+                ticker = yf.Ticker(symbol)
+                ticker.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                
+                df = ticker.history(start=yf_start, end=yf_end, interval="1d", progress=False)
+                if not df.empty and len(df) > 0:
+                    print(f"[Historical] yfinance successful: {len(df)} data points")
                     data = []
                     for idx, row in df.iterrows():
                         data.append({
@@ -126,8 +147,11 @@ class handler(BaseHTTPRequestHandler):
                             "adjClose": float(row["Close"]),
                         })
                     return self._write_json(200, {"success": True, "data": data})
+                else:
+                    print(f"[Historical] yfinance returned empty DataFrame")
             except Exception as ye:
-                pass
+                print(f"[Historical] yfinance failed: {str(ye)}")
+                # yfinance errors are now handled - return empty data gracefully
 
             return self._write_json(200, {"success": True, "data": []})
         except Exception as e:
