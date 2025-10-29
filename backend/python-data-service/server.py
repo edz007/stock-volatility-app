@@ -9,6 +9,7 @@ from flask_cors import CORS
 import yfinance as yf
 from datetime import datetime, timedelta
 import logging
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -125,8 +126,9 @@ def get_quote(symbol):
 
 
 if __name__ == '__main__':
-    print('🐍 Starting Python yfinance Data Service on port 5001')
-    print('📊 API: http://localhost:5001')
-    print('❤️  Health: http://localhost:5001/health\n')
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    port = int(os.environ.get('PORT', 5001))
+    print(f'🐍 Starting Python yfinance Data Service on port {port}')
+    print(f'📊 API: http://localhost:{port}')
+    print(f'❤️  Health: http://localhost:{port}/health\n')
+    app.run(host='0.0.0.0', port=port, debug=False)
 
