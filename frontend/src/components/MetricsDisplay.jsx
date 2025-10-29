@@ -18,6 +18,12 @@ const MetricsDisplay = ({ data }) => {
     return value.toFixed(decimals);
   };
 
+  const formatPValue = (p) => {
+    if (p === null || p === undefined || isNaN(p)) return '-';
+    if (p < 1e-6) return '<1e-6';
+    return p.toFixed(6);
+  };
+
   const formatScientific = (value, decimals = 4) => {
     if (Math.abs(value) < 0.0001 || Math.abs(value) > 1000000) {
       return value.toExponential(decimals);
@@ -117,21 +123,21 @@ const MetricsDisplay = ({ data }) => {
                   <td>{formatScientific(diagnostics.coefficients.omega.value, 4)}</td>
                   <td>{formatScientific(diagnostics.coefficients.omega.stdError, 4)}</td>
                   <td>{formatNumber(diagnostics.coefficients.omega.tStat, 3)}</td>
-                  <td>{formatNumber(diagnostics.coefficients.omega.pValue, 4)}</td>
+                  <td>{formatPValue(diagnostics.coefficients.omega.pValue)}</td>
                 </tr>
                 <tr>
                   <td>α (alpha)</td>
                   <td>{formatNumber(diagnostics.coefficients.alpha.value, 4)}</td>
                   <td>{formatNumber(diagnostics.coefficients.alpha.stdError, 4)}</td>
                   <td>{formatNumber(diagnostics.coefficients.alpha.tStat, 3)}</td>
-                  <td>{formatNumber(diagnostics.coefficients.alpha.pValue, 4)}</td>
+                  <td>{formatPValue(diagnostics.coefficients.alpha.pValue)}</td>
                 </tr>
                 <tr>
                   <td>β (beta)</td>
                   <td>{formatNumber(diagnostics.coefficients.beta.value, 4)}</td>
                   <td>{formatNumber(diagnostics.coefficients.beta.stdError, 4)}</td>
                   <td>{formatNumber(diagnostics.coefficients.beta.tStat, 3)}</td>
-                  <td>{formatNumber(diagnostics.coefficients.beta.pValue, 4)}</td>
+                  <td>{formatPValue(diagnostics.coefficients.beta.pValue)}</td>
                 </tr>
               </tbody>
             </table>

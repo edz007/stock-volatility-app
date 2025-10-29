@@ -24,7 +24,13 @@ const ProbabilityBrackets = ({ data }) => {
             <div className="label">{b.label}</div>
             <div className="value">{formatPct(b.probability)}</div>
             <div className="bar-col">
-              <div className={`bar ${b.color || ''}`} style={{ width: `${Math.min(100, (b.probability || 0) * 100)}%` }} />
+              <div className="bar-track">
+                <div
+                  className={`bar ${b.color || ''}`}
+                  style={{ width: `${Math.min(100, (b.probability || 0) * 100)}%` }}
+                />
+                <span className="bar-text">{formatPct(b.probability)}</span>
+              </div>
             </div>
           </div>
         ))}
