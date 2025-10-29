@@ -67,8 +67,11 @@ class handler(BaseHTTPRequestHandler):
             if api_key:
                 try:
                     print(f"[Historical] Trying Finnhub first for {symbol}")
-                    from_ts = int(start_date.timestamp())
-                    to_ts = int(end_date.timestamp())
+                    # Convert date objects to datetime for timestamp()
+                    start_dt = datetime.combine(start_date, datetime.min.time())
+                    end_dt = datetime.combine(end_date, datetime.min.time())
+                    from_ts = int(start_dt.timestamp())
+                    to_ts = int(end_dt.timestamp())
                     url = f"https://finnhub.io/api/v1/stock/candle?symbol={symbol}&resolution=D&from={from_ts}&to={to_ts}&token={api_key}"
                     r = requests.get(url, timeout=20)
                     r.raise_for_status()
