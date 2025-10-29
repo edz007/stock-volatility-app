@@ -2,9 +2,9 @@
 
 ## Overview
 
-This application analyzes stock volatility using GARCH models with two deployment options:
-1. **Real-time mode**: Fetch data directly from Yahoo Finance API when users request
-2. **Cron mode** (Recommended for daily snapshots): Python collector stores data at 4pm and 6:45pm EST in Supabase
+This application analyzes stock volatility using GARCH models with two modes:
+1. **Real-time mode (Recommended)**: Python Flask service (yfinance) provides market data to the Node.js backend
+2. **Cron mode**: Python collector stores snapshots at 4pm and 6:45pm EST in Supabase
 
 ## Prerequisites
 
@@ -14,20 +14,30 @@ This application analyzes stock volatility using GARCH models with two deploymen
 
 ## Quick Start (Real-time Mode)
 
-### 1. Backend Setup
+### 1. Python Data Service
 
 ```bash
-cd backend
+cd backend/python-data-service
+pip install -r requirements.txt
+python server.py
+```
+
+The Python service runs at http://localhost:5001 (health: /health)
+
+### 2. Backend Setup
+
+```bash
+cd ../../backend
 npm install
 npm start
 ```
 
 The backend will run on http://localhost:5000
 
-### 2. Frontend Setup
+### 3. Frontend Setup
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
 npm start
 ```
@@ -158,7 +168,8 @@ SUPABASE_KEY=your_supabase_anon_key
 - Mean return (annualized)
 - Standard deviation
 - Volatility range (min/max)
-- GARCH parameters (ω, α, β)
+- GARCH parameters (ω, α, β) and diagnostics (p‑values, log‑likelihood, AIC, BIC, observations)
+- Price change probabilities (t‑distribution) by brackets (−10%..−5%, …, +5%..+10%)
 
 ## API Endpoints
 

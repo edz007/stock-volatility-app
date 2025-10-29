@@ -2,7 +2,16 @@
 
 ## Get Running in 5 Minutes
 
-### Step 1: Start Backend (Terminal 1)
+### Step 1: Start Python Data Service (Terminal 1)
+```bash
+cd backend/python-data-service
+pip install -r requirements.txt
+python server.py
+```
+
+Wait for: `🐍 Starting Python yfinance Data Service on port 5001`
+
+### Step 2: Start Backend (Terminal 2)
 ```bash
 cd backend
 npm install
@@ -11,7 +20,7 @@ npm start
 
 Wait for: `🚀 Stock Volatility API Server running on port 5000`
 
-### Step 2: Start Frontend (Terminal 2)
+### Step 3: Start Frontend (Terminal 3)
 ```bash
 cd frontend
 npm install
@@ -32,7 +41,9 @@ Browser will open automatically at http://localhost:3000
 - 📊 Interactive price chart
 - 📈 Volatility over time
 - 📉 Key metrics (current volatility, returns, etc.)
-- 🔢 GARCH model parameters
+- 🔢 GARCH model parameters with diagnostics (p‑values, LL, AIC, BIC)
+- 🎯 Probability brackets (t‑distribution) for price moves
+- 📖 Learn page explaining GARCH, EWMA, Rolling
 
 ### Compare Multiple Stocks
 
@@ -55,8 +66,7 @@ Try different models to see how results vary:
 - Try: `npm install --force`
 
 **Frontend can't load data?**
-- Check backend is running
-- Verify http://localhost:5000/health shows OK
+- Check Python service (http://localhost:5001/health) and backend (http://localhost:5000/health) are running
 
 **No data for stock?**
 - Try a different date range

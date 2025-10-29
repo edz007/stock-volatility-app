@@ -19,7 +19,7 @@ Your **Node.js backend** is already running on port 5000. You need to:
 **Open a NEW PowerShell terminal** and run:
 ```powershell
 cd C:\stock-volatility-app\backend\python-data-service
-python -m pip install flask flask-cors yfinance pandas
+python -m pip install -r requirements.txt
 python server.py
 ```
 
@@ -58,5 +58,7 @@ Keep all 3 open while using the app!
 
 ## 💡 Why This Approach?
 
-Yahoo Finance's Node.js library (`yahoo-finance2`) was giving "Unauthorized" errors. The Python `yfinance` library is more reliable and doesn't have these authentication issues.
+Yahoo Finance's Node.js library (`yahoo-finance2`) was giving "Unauthorized" errors. The Python `yfinance` library is more reliable and doesn't have these authentication issues. The backend calls this service by default at `http://localhost:5001`.
+
+Tip: On Windows, you can also double‑click `start-all.cmd` in the project root to start all three services.
 

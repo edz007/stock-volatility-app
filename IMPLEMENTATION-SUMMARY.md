@@ -12,13 +12,16 @@ All components have been successfully implemented and are ready to use.
 **Files Created**:
 - `server.js` - Express server with CORS, routing, error handling
 - `routes/stocks.js` - RESTful API endpoints for stocks
-- `services/yahooFinance.js` - Yahoo Finance API integration
+- `services/yahooFinance.js` - Yahoo Finance integration via Python service
 - `services/volatilityCalculator.js` - GARCH, EWMA, Rolling window models
+- `services/probabilityCalculator.js` - t‑distribution probabilities for price brackets
 - `package.json` - Dependencies and scripts
 
 **Features**:
-- Fetch historical stock data from Yahoo Finance
+- Fetch historical stock data via Python yfinance service
 - Calculate volatility using 3 different models
+- GARCH diagnostics: p‑values, log‑likelihood, AIC, BIC, observations
+- Price‑change probability brackets using t‑distribution
 - Search stock symbols
 - Get current quotes
 - Support single and multi-stock analysis
@@ -33,7 +36,8 @@ All components have been successfully implemented and are ready to use.
 - `DateRangePicker.jsx` - Preset and custom date ranges
 - `VolatilityChart.jsx` - Interactive price and volatility charts
 - `StockComparison.jsx` - Multi-stock comparison visualization
-- `MetricsDisplay.jsx` - Key statistics and GARCH parameters
+- `MetricsDisplay.jsx` - Key statistics, GARCH parameters & diagnostics
+- `ProbabilityBrackets.jsx` - t‑distribution probability table with bars
 
 **Services**:
 - `api.js` - Axios-based API client
@@ -44,7 +48,7 @@ All components have been successfully implemented and are ready to use.
 - Interactive hover states
 - Professional color scheme
 
-### 3. Data Collector (Python) ✅
+### 3. Data Service & Collector (Python) ✅
 **Location**: `data-collector/`
 
 **Files Created**:
@@ -96,15 +100,15 @@ All components have been successfully implemented and are ready to use.
 │                    Backend (Express API)                     │
 │  ┌──────────────┐  ┌───────────────────────────────────┐   │
 │  │  Routes      │  │  Services                         │   │
-│  │  - /stock    │→ │  - Yahoo Finance Integration      │   │
-│  │  - /search   │→ │  - GARCH Volatility Calculator    │   │
-│  │  - /quote    │  │  - EWMA Calculator                │   │
+│  │  - /stock    │→ │  - Volatility & Probabilities     │   │
+│  │  - /search   │→ │  - Yahoo Finance Integration      │   │
+│  │  - /quote    │  │    (via Python yfinance service)  │   │
 │  └──────────────┘  └───────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                      Yahoo Finance API                       │
-│              (Real-time Market Data Source)                  │
+│             Python Data Service (Flask + yfinance)           │
+│                     http://localhost:5001                    │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -147,13 +151,18 @@ All components have been successfully implemented and are ready to use.
 
 ### Quick Start (Real-time Mode)
 ```bash
-# Terminal 1 - Backend
-cd backend
-npm install
-node server.js
+# Terminal 1 - Python data service
+cd backend/python-data-service
+pip install -r requirements.txt
+python server.py
 
-# Terminal 2 - Frontend  
-cd frontend
+# Terminal 2 - Backend
+cd ../../backend
+npm install
+npm start
+
+# Terminal 3 - Frontend  
+cd ../frontend
 npm install
 npm start
 ```
