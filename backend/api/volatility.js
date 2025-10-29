@@ -3,6 +3,13 @@ const volatilityCalculator = require("../services/volatilityCalculator");
 
 // POST /api/volatility  { symbols: [], start, end, method }
 module.exports = async (req, res) => {
+  // CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
   try {
     if (req.method !== "POST") {
       res.setHeader("Allow", "POST");
